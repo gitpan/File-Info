@@ -112,7 +112,7 @@ use constant S16K            => 2 ** 14;
 # -------------------------------------
 
 our $PACKAGE = 'File-Info';
-our $VERSION = '1.01';
+our $VERSION = '1.02';
 
 # -------------------------------------
 # CLASS CONSTRUCTION
@@ -313,25 +313,6 @@ sub add_global_lookup {
 
 # -------------------------------------
 
-# Nasty hackery to get 'round unwated manadatory redefine warnings in 5.6.1
-my %redef_subr; # track of subrs intentionally redefined to exclude from
-                # warnings
-{
-  my $file = __FILE__;
-  my $warncode = $SIG{__WARN__};
-  $SIG{__WARN__} = sub {
-    return
-      if $_[0] =~ 
-        /^Subroutine (\w+) redefined at $file/ and exists $redef_subr{$1};
-
-    print STDERR $_[0];
-    $warncode->($_[0])
-      if ( defined $warncode                 and
-           ref $warncode                     and
-           UNIVERSAL::isa($warncode, 'CODE') );
-  };
-}
-
 sub _make_class_ready {
   my $class = shift;
   my ($subrname, $subr) = @_;
@@ -344,6 +325,22 @@ sub _make_class_ready {
     }
 
     no warnings 'redefine';
+
+    my $file = __FILE__;
+    my $warnhook = $SIG{__WARN__};
+    my %redef_subr;
+
+    local $SIG{__WARN__} = sub {
+      # Nasty hack to avoid irritating mandatory redefine warnings bug
+      return
+        if ( ( $_[0] =~ /^Subroutine ([:\w]+) redefined at $file/ ) and 
+             ( exists $redef_subr{$1} or 
+               ( index($1,':') == -1 and exists $redef_subr{"main::$1"} )
+             ) );
+      my $message = join '', grep defined, @_;
+      $warnhook->(@_)
+        if defined $warnhook and UNIVERSAL::isa($warnhook, 'CODE');
+    };
 
     $redef_subr{$subrname} = 1;
     *{"${class}::${subrname}"} =
@@ -707,8 +704,8 @@ Martyn J. Pearce C<fluffy@cpan.org>
 
 =head1 COPYRIGHT
 
-Copyright (c) 2002 Martyn J. Pearce.  This program is free software; you can
-redistribute it and/or modify it under the same terms as Perl itself.
+Copyright (c) 2002, 2003 Martyn J. Pearce.  This program is free software; you
+can redistribute it and/or modify it under the same terms as Perl itself.
 
 =head1 SEE ALSO
 
