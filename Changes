@@ -1,0 +1,8 @@
+Revision history for Perl extension foofoo.
+
+1.00  Mon Apr 22  9:02 GMT 2002
+	- original version
+	- handles MD5 signatures (with Digest::MD5)
+	- handles simple par info (with Archive::Par)
+	- permits local & global overrides
+	- very limited 'type' capability
