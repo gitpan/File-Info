@@ -10,6 +10,10 @@ File::Info - Store file information persistently for fast lookup
 
   use File::Info qw( $PACKAGE $VERSION );
 
+  my $info = File::Info->new($dir);
+  # $fn is "basename"; contains no directory portion
+  my $hex  = $info->md5hex($fn);  # Reads cached data if possible
+
 =head1 DESCRIPTION
 
 This package stores per-file information for speedy lookup later.  It is
@@ -108,7 +112,7 @@ use constant S16K            => 2 ** 14;
 # -------------------------------------
 
 our $PACKAGE = 'File-Info';
-our $VERSION = '1.00';
+our $VERSION = '1.01';
 
 # -------------------------------------
 # CLASS CONSTRUCTION
@@ -309,6 +313,25 @@ sub add_global_lookup {
 
 # -------------------------------------
 
+# Nasty hackery to get 'round unwated manadatory redefine warnings in 5.6.1
+my %redef_subr; # track of subrs intentionally redefined to exclude from
+                # warnings
+{
+  my $file = __FILE__;
+  my $warncode = $SIG{__WARN__};
+  $SIG{__WARN__} = sub {
+    return
+      if $_[0] =~ 
+        /^Subroutine (\w+) redefined at $file/ and exists $redef_subr{$1};
+
+    print STDERR $_[0];
+    $warncode->($_[0])
+      if ( defined $warncode                 and
+           ref $warncode                     and
+           UNIVERSAL::isa($warncode, 'CODE') );
+  };
+}
+
 sub _make_class_ready {
   my $class = shift;
   my ($subrname, $subr) = @_;
@@ -322,6 +345,7 @@ sub _make_class_ready {
 
     no warnings 'redefine';
 
+    $redef_subr{$subrname} = 1;
     *{"${class}::${subrname}"} =
       sub {
         if ( ref $_[0] ) {
